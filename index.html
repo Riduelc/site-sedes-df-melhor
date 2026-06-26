@@ -411,6 +411,7 @@ button, .tab-btn, .timer-btn, .page-btn, .btn-resposta, .save-redacao {
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -1700,6 +1701,12 @@ button, .tab-btn, .timer-btn, .page-btn, .btn-resposta, .save-redacao {
 
     <!-- ========== DIÁRIO MANUAL DE ESTUDOS ========== -->
     <h2>📝 Lançamento de estudo manual</h2>
+    <!-- ========== Destacar o último local de parada ========== -->
+<div id="ultimoPontoParada" style="background: #fef9e3; border-left: 6px solid #f59e0b; border-radius: 16px; padding: 12px; margin-bottom: 20px;">
+    <strong>🔁 Último ponto de parada:</strong> 
+    <span id="ultimoOndeParei" style="font-weight: normal; color: #1e2a3e;">Nenhum registro ainda</span>
+</div>
+
     <div style="background: #f1f5f9; border-radius: 24px; padding: 20px; margin-bottom: 24px;">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
             <div>
@@ -1769,6 +1776,14 @@ button, .tab-btn, .timer-btn, .page-btn, .btn-resposta, .save-redacao {
             <div>
                 <label><strong>📅 Data</strong></label>
                 <input type="date" id="dataEstudo" style="width: 100%; padding: 8px; border-radius: 12px; border: 1px solid #cbd5e1;">
+            </div>
+            <div>
+                <label><strong>📌 Onde iniciei</strong></label>
+                <input type="text" id="ondeIniciei" placeholder="Ex: art. 37 da CF" style="width:100%; padding:8px; border-radius:12px; border:1px solid #cbd5e1;">
+            </div>
+            <div>
+                <label><strong>📌 Onde parei</strong></label>
+                <input type="text" id="ondeParei" placeholder="Ex: art. 5º, inciso II" style="width:100%; padding:8px; border-radius:12px; border:1px solid #cbd5e1;">
             </div>
         </div>
         <div style="margin-top: 16px; display: flex; gap: 12px; flex-wrap: wrap;">
@@ -1882,6 +1897,7 @@ button, .tab-btn, .timer-btn, .page-btn, .btn-resposta, .save-redacao {
             <thead>
                 <tr style="background: #eef2ff;">
                     <th>Disciplina (Nível 2)</th>
+                    <th>Subtópico (Nível 3)</th>   <!-- NOVA COLUNA -->
                     <th>Total de páginas</th>
                     <th>Tempo total (min)</th>
                     <th>Média (min/página)</th>
@@ -1903,7 +1919,34 @@ button, .tab-btn, .timer-btn, .page-btn, .btn-resposta, .save-redacao {
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
 
-    
+       // Serve para limitar os rótulos dos gráficos, evitando que fiquem muito longos
+            function abreviarRotulo(texto, limite = 30) {
+                // Se o texto já está dentro do limite, retorna ele
+                if (texto.length <= limite) return texto;
+
+                const palavras = texto.split(' ');
+                // Se tem 2 palavras ou menos, corta no limite com '…'
+                if (palavras.length <= 2) {
+                    return texto.substring(0, limite) + '…';
+                }
+
+                // Abrevia cada palavra (exceto a primeira) com 3 letras + '.'
+                const abreviadas = palavras.map((pal, i) => {
+                    if (i === 0) return pal; // primeira palavra inteira
+                    if (pal.length <= 3) return pal; // palavras curtas não são abreviadas
+                    return pal.substring(0, 3) + '.';
+                });
+
+                let resultado = abreviadas.join(' ');
+                // Se ainda ultrapassar o limite, corta no final com '…'
+                if (resultado.length > limite) {
+                    resultado = resultado.substring(0, limite) + '…';
+                }
+                return resultado;
+                }
+  
+
+    let currentUser = null;
     // --------------------------------------------------------
     // 1. INICIALIZAÇÃO DA ABA SIMULADO (250 questões + timer)
     // --------------------------------------------------------
@@ -2426,8 +2469,6 @@ function initAbaDiscursiva() {
         });
     }
 
-// ==================== SIMULADO REAL (60 questões) ====================
-
 // ==================== SIMULADO REAL (60 questões + DISCURSIVA) ====================
 function initSimuladoReal() {
     const container = document.getElementById('simuladoReal');
@@ -2887,13 +2928,14 @@ function initSimuladoReal() {
     inicializarSimulado();
 }
 
-    // ==================== INICIALIZAÇÃO DA ABA RELATÓRIOS ====================
-// ==================== INICIALIZAÇÃO DA ABA RELATÓRIOS (MANUAL + AUTOMÁTICO) ====================
-
 // ==================== INICIALIZAÇÃO DA ABA RELATÓRIOS (MANUAL + AUTOMÁTICO) ====================
 function initAbaRelatorios() {
     const container = document.getElementById('relatorios');
     if (!container) return;
+
+    // 1. Declare a variável para armazenar a referência da função toggleHistorico
+    let toggleHistoricoFn = null;   // <-- ADICIONE ESTA LINHA
+
 
         // Tornar funções de acesso globais para uso nos botões de exclusão
   
@@ -2981,23 +3023,6 @@ auth.onAuthStateChanged(user => {
 
 let currentUserLogsRef = null; // Guarda a referência do banco do usuário atual
 
-// 1. Carregar logs (lê do cache local)
-function carregarLogs() {
-    const local = localStorage.getItem('sedes_manual_logs_fallback');
-    return local ? JSON.parse(local) : [];
-}
-
-// 2. Salvar logs (salva local e envia para o Firebase do usuário)
-function salvarLogs(logs) {
-    // Salva no cache local (instantâneo)
-    localStorage.setItem('sedes_manual_logs_fallback', JSON.stringify(logs));
-    
-    // Salva no Firebase, mas APENAS se o usuário estiver logado
-    if (currentUser) {
-        const ref = database.ref('users/' + currentUser.uid + '/logs');
-        ref.set(logs).catch(err => console.error("Erro ao salvar no Firebase:", err));
-    }
-}
 
 // 3. Ouvinte do Firebase (atualiza quando outro dispositivo muda os dados do usuário)
 function iniciarOuvinteFirebase() {
@@ -3018,13 +3043,13 @@ function iniciarOuvinteFirebase() {
             // Atualiza o cache local com os dados que vieram da nuvem
             localStorage.setItem('sedes_manual_logs_fallback', JSON.stringify(logs));
             // Re-renderiza a interface
-            renderizarTabela();
+            // removi <renderizarTabela();>
             atualizarGraficos();
             atualizarMetricasTempoPorPagina(); // 👈 ADICIONE AQUI
         } else {
             // Se o banco estiver vazio, limpa o cache local
             localStorage.removeItem('sedes_manual_logs_fallback');
-            renderizarTabela();
+            // removi <renderizarTabela();>
             atualizarGraficos();
             atualizarMetricasTempoPorPagina(); // 👈 ADICIONE AQUI
         }
@@ -3202,26 +3227,23 @@ function adicionarLog() {
         return;
     }
     const tipo = tipoEstudo.value;
-    // Lê ciclo e multiplicador
     const ciclo = parseInt(document.getElementById('cicloTempo').value) || 0;
     const multiplicador = parseInt(document.getElementById('multiplicadorCiclo').value) || 0;
     const totalMinutos = ciclo * multiplicador;
-
     if (totalMinutos === 0) {
         alert('O tempo total deve ser maior que zero.');
         return;
     }
-
-    // Converte para horas e minutos
     const horas = Math.floor(totalMinutos / 60);
     const minutos = totalMinutos % 60;
-
     const pages = parseInt(paginas.value) || 0;
     const cert = parseInt(certas.value) || 0;
     const err = parseInt(erradas.value) || 0;
     const total = cert + err;
     const perc = total > 0 ? Math.round((cert / total) * 100) : 0;
     const data = dataEstudo.value || new Date().toISOString().slice(0, 10);
+    const ondeIniciei = document.getElementById('ondeIniciei').value.trim();
+    const ondeParei = document.getElementById('ondeParei').value.trim();
 
     const log = {
         id: Date.now(),
@@ -3230,13 +3252,15 @@ function adicionarLog() {
         nivel2: n2,
         nivel3: n3,
         tipo,
-        horas: horas,
-        minutos: minutos,
+        horas,
+        minutos,
         paginas: pages,
         certas: cert,
         erradas: err,
         total,
-        percentual: perc
+        percentual: perc,
+        ondeIniciei,
+        ondeParei
     };
 
     const logs = carregarLogs();
@@ -3245,15 +3269,45 @@ function adicionarLog() {
     renderizarTabela();
     atualizarGraficos();
     atualizarMetricasTempoPorPagina();
+
+    // ===== EXPANDE AUTOMATICAMENTE (FORÇA ABERTURA) =====
+    const containerHistorico = document.getElementById('historicoContainer');
+    const btnToggle = document.getElementById('btnToggleHistorico');
+    const contador = document.getElementById('contadorHistorico');
+
+    if (containerHistorico) {
+        containerHistorico.style.display = 'block';
+        if (btnToggle) btnToggle.textContent = '▲ Recolher';
+        if (contador) {
+            const updatedLogs = carregarLogs();
+            contador.textContent = `(${updatedLogs.length} registros)`;
+        }
+    }
+
+    // Limpa os campos "onde" para a próxima entrada
+    document.getElementById('ondeIniciei').value = '';
+    document.getElementById('ondeParei').value = '';
 }
 
     function removerLog(id) {
         let logs = carregarLogs();
+        const originalLength = logs.length;
         logs = logs.filter(log => log.id !== id);
+        if (logs.length === originalLength) {
+            console.warn('ID não encontrado para remoção:', id);
+            return;
+        }
         salvarLogs(logs);
         renderizarTabela();
         atualizarGraficos();
-        atualizarMetricasTempoPorPagina(); // 👈 ADICIONE ESTA LINHA
+        atualizarMetricasTempoPorPagina();
+
+        // ===== ATUALIZA O CONTADOR =====
+        const contador = document.getElementById('contadorHistorico');
+        if (contador) {
+            const updatedLogs = carregarLogs();
+            contador.textContent = `(${updatedLogs.length} registros)`;
+        }
     }
 
     function limparTodosLogs() {
@@ -3268,11 +3322,15 @@ function adicionarLog() {
     window.removerLog = removerLog;
 
     // ---------- 5. RENDERIZAR TABELA ----------
- function renderizarTabela() {
+
+    function renderizarTabela() {
     const logs = carregarLogs();
+    const corpo = document.getElementById('corpoTabelaManual');
+    if (!corpo) return;
+
+    // Atualiza o contador sempre que renderizar a tabela
     const contador = document.getElementById('contadorHistorico');
     if (contador) {
-        // Se o histórico estiver expandido, mostra o número; senão, mostra apenas se houver registros
         const container = document.getElementById('historicoContainer');
         if (container && container.style.display === 'block') {
             contador.textContent = `(${logs.length} registros)`;
@@ -3281,17 +3339,18 @@ function adicionarLog() {
         }
     }
 
-    const corpo = document.getElementById('corpoTabelaManual');
     if (logs.length === 0) {
-        corpo.innerHTML = '<tr><td colspan="12" style="text-align:center; padding: 20px;">Nenhum lançamento manual ainda.</td></tr>';
+        corpo.innerHTML = '<tr><td colspan="14" style="text-align:center; padding: 20px;">Nenhum lançamento manual ainda.</td></tr>';
+        atualizarUltimoPontoParada();
         return;
     }
+
     let html = '';
     logs.slice().reverse().forEach(log => {
-       const tempo = log.horas > 0 
+        const tempo = log.horas > 0 
             ? `${log.horas}h ${log.minutos}m (${log.horas * 60 + log.minutos} min)`
             : `${log.minutos}m`;
-       html += `
+        html += `
             <tr>
                 <td style="padding: 6px;">${log.data}</td>
                 <td style="padding: 6px;">${log.nivel1}</td>
@@ -3304,12 +3363,17 @@ function adicionarLog() {
                 <td style="padding: 6px;">${log.erradas}</td>
                 <td style="padding: 6px;">${log.total}</td>
                 <td style="padding: 6px;">${log.percentual}%</td>
+                <td style="padding: 6px;">${log.ondeIniciei || ''}</td>
+                <td style="padding: 6px;">${log.ondeParei || ''}</td>
                 <td style="padding: 6px;"><button onclick="removerLog(${log.id})" style="background:#b91c1c; border:none; padding:4px 8px; border-radius:12px; cursor:pointer; color:white;">🗑️</button></td>
             </tr>
         `;
     });
+
     corpo.innerHTML = html;
+    atualizarUltimoPontoParada();
 }
+
       // ---------- 6. TABELA DE ERROS POR SUBTÓPICO ----------
 
     // ---------- 7. GRÁFICOS (Chart.js) ----------
@@ -3317,265 +3381,6 @@ function adicionarLog() {
     let graficoAcertosErros = null;
     let graficoNivel1 = null;
 
-function atualizarGraficos() {
-    // Serve para limitar os rótulos dos gráficos, evitando que fiquem muito longos
-   function abreviarRotulo(texto, limite = 30) {
-    // Se o texto já está dentro do limite, retorna ele
-    if (texto.length <= limite) return texto;
-
-    const palavras = texto.split(' ');
-    // Se tem 2 palavras ou menos, corta no limite com '…'
-    if (palavras.length <= 2) {
-        return texto.substring(0, limite) + '…';
-    }
-
-    // Abrevia cada palavra (exceto a primeira) com 3 letras + '.'
-    const abreviadas = palavras.map((pal, i) => {
-        if (i === 0) return pal; // primeira palavra inteira
-        if (pal.length <= 3) return pal; // palavras curtas não são abreviadas
-        return pal.substring(0, 3) + '.';
-    });
-
-    let resultado = abreviadas.join(' ');
-    // Se ainda ultrapassar o limite, corta no final com '…'
-    if (resultado.length > limite) {
-        resultado = resultado.substring(0, limite) + '…';
-    }
-    return resultado;
-}
-    const logs = carregarLogs();
-    if (logs.length === 0) {
-        if (graficoHorasPaginas) { graficoHorasPaginas.destroy(); graficoHorasPaginas = null; }
-        if (graficoAcertosErros) { graficoAcertosErros.destroy(); graficoAcertosErros = null; }
-        if (graficoNivel1) { graficoNivel1.destroy(); graficoNivel1 = null; }
-        document.getElementById('tabelaErrosSubtopico').innerHTML = '<p style="color: #94a3b8; font-style: italic;">Nenhum dado ainda.</p>';
-        return;
-    }
-
-    // ---------- FILTROS PARA GRÁFICOS DE QUESTÕES ----------
-    const logsComQuestoes = logs.filter(log => (log.certas + log.erradas) > 0);
-    const logsComErros = logs.filter(log => log.erradas > 0);
-
-    // ---------- Agrupar TODOS os logs para Horas/Páginas e Nível 1 ----------
-    const disciplinasCompletas = {};
-    const niveis1Completos = {};
-
-    logs.forEach(log => {
-        const key = log.nivel2;
-        if (!disciplinasCompletas[key]) {
-            disciplinasCompletas[key] = { horas: 0, paginas: 0 };
-        }
-        disciplinasCompletas[key].horas += log.horas + log.minutos / 60;
-        disciplinasCompletas[key].paginas += log.paginas;
-
-        if (!niveis1Completos[log.nivel1]) niveis1Completos[log.nivel1] = 0;
-        niveis1Completos[log.nivel1] += log.horas + log.minutos / 60;
-    });
-
-    // ---------- Agrupar APENAS logs com questões para Acertos/Erros/% ----------
-    const disciplinasQuestoes = {};
-    logsComQuestoes.forEach(log => {
-        const key = log.nivel2;
-        if (!disciplinasQuestoes[key]) {
-            disciplinasQuestoes[key] = { certas: 0, erradas: 0, total: 0 };
-        }
-        disciplinasQuestoes[key].certas += log.certas;
-        disciplinasQuestoes[key].erradas += log.erradas;
-        disciplinasQuestoes[key].total += log.certas + log.erradas;
-    });
-
-    // ---------- Agrupar por SUBTÓPICO (nível 3) para classificação de desempenho ----------
-    const desempenhoSubtopico = {};
-    logsComQuestoes.forEach(log => {
-        const subKey = `${log.nivel1}|${log.nivel2}|${log.nivel3}`;
-        if (!desempenhoSubtopico[subKey]) {
-            desempenhoSubtopico[subKey] = {
-                nivel1: log.nivel1,
-                nivel2: log.nivel2,
-                nivel3: log.nivel3,
-                certas: 0,
-                erradas: 0,
-                total: 0
-            };
-        }
-        desempenhoSubtopico[subKey].certas += log.certas;
-        desempenhoSubtopico[subKey].erradas += log.erradas;
-        desempenhoSubtopico[subKey].total += log.certas + log.erradas;
-    });
-
-    // ---------- Preparar dados para os gráficos ----------
-    const labelsCompletas = Object.keys(disciplinasCompletas);
-    const horasData = labelsCompletas.map(l => disciplinasCompletas[l].horas);
-    const paginasData = labelsCompletas.map(l => disciplinasCompletas[l].paginas);
-
-    const labelsQuestoes = Object.keys(disciplinasQuestoes);
-    const certasData = labelsQuestoes.map(l => disciplinasQuestoes[l].certas);
-    const erradasData = labelsQuestoes.map(l => disciplinasQuestoes[l].erradas);
-    const percData = labelsQuestoes.map(l => {
-        const total = disciplinasQuestoes[l].certas + disciplinasQuestoes[l].erradas;
-        return total > 0 ? Math.round((disciplinasQuestoes[l].certas / total) * 100) : 0;
-    });
-
-    const labelsN1 = Object.keys(niveis1Completos);
-    const dataN1 = Object.values(niveis1Completos);
-
-    // ---------- Destruir gráficos antigos ----------
-    if (graficoHorasPaginas) { graficoHorasPaginas.destroy(); graficoHorasPaginas = null; }
-    if (graficoAcertosErros) { graficoAcertosErros.destroy(); graficoAcertosErros = null; }
-    if (graficoNivel1) { graficoNivel1.destroy(); graficoNivel1 = null; }
-
-// ---------- Gráfico 1: Horas e Páginas ----------
-// ---------- Gráfico 1: Horas e Páginas ----------
-const labelsTruncadas = labelsCompletas.map(label => abreviarRotulo(label, 30));
-
-const ctx1 = document.getElementById('graficoHorasPaginas').getContext('2d');
-graficoHorasPaginas = new Chart(ctx1, {
-    type: 'bar',
-    data: {
-        labels: labelsTruncadas,
-        datasets: [
-            { label: 'Horas', data: horasData, backgroundColor: 'rgba(30,111,92,0.8)', borderColor: '#1e6f5c', borderWidth: 1, yAxisID: 'y' },
-            { label: 'Páginas', data: paginasData, backgroundColor: 'rgba(59,130,246,0.8)', borderColor: '#3b82f6', borderWidth: 1, yAxisID: 'y1' }
-        ]
-    },
-    options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } },
-        scales: {
-            y: { beginAtZero: true, position: 'left', title: { display: true, text: 'Horas' } },
-            y1: { beginAtZero: true, position: 'right', title: { display: true, text: 'Páginas' }, grid: { drawOnChartArea: false } }
-        }
-    }
-});
-
-// ---------- Gráfico 2: Acertos, Erros e % ----------
-// ---------- Gráfico 2: Acertos, Erros e % ----------
-const labelsTruncadas2 = labelsQuestoes.map(label => abreviarRotulo(label, 30));
-
-const ctx2 = document.getElementById('graficoAcertosErros').getContext('2d');
-graficoAcertosErros = new Chart(ctx2, {
-    type: 'bar',
-    data: {
-        labels: labelsTruncadas2,
-        datasets: [
-            { label: 'Acertos', data: certasData, backgroundColor: 'rgba(30,111,92,0.7)', borderColor: '#1e6f5c', borderWidth: 1, yAxisID: 'y' },
-            { label: 'Erros', data: erradasData, backgroundColor: 'rgba(220,38,38,0.7)', borderColor: '#dc2626', borderWidth: 1, yAxisID: 'y' },
-            { label: '% Acertos', type: 'line', data: percData, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.2)', borderWidth: 3, pointBackgroundColor: '#f59e0b', pointBorderColor: '#f59e0b', pointRadius: 5, fill: false, tension: 0.3, yAxisID: 'y1' }
-        ]
-    },
-    options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } },
-        scales: {
-            y: { beginAtZero: true, position: 'left', title: { display: true, text: 'Quantidade' } },
-            y1: { beginAtZero: true, position: 'right', max: 100, title: { display: true, text: '%' }, grid: { drawOnChartArea: false } }
-        }
-    }
-});
-    // ---------- Gráfico 3: Tempo por Nível 1 ----------
-    const ctx3 = document.getElementById('graficoNivel1').getContext('2d');
-    const coresN1 = ['#1e6f5c', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
-    graficoNivel1 = new Chart(ctx3, {
-        type: 'pie',
-        data: { labels: labelsN1, datasets: [{ data: dataN1, backgroundColor: coresN1.slice(0, labelsN1.length) }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } } }
-    });
-
-    // ---------- NOVA SESSÃO: CLASSIFICAÇÃO DE DESEMPENHO POR SUBTÓPICO ----------
-// ---------- NOVA SESSÃO: CLASSIFICAÇÃO DE DESEMPENHO POR SUBTÓPICO ----------
-const containerDesempenho = document.getElementById('tabelaErrosSubtopico');
-
-// Converter para array e calcular percentual e nível
-const desempenhoArray = Object.values(desempenhoSubtopico).map(item => {
-    const perc = item.total > 0 ? (item.certas / item.total) * 100 : 0;
-    let nivel = '';
-    let cor = '';
-    if (perc <= 70) {
-        nivel = 'Iniciante';
-        cor = '#dc2626';
-    } else if (perc <= 80) {
-        nivel = 'Intermediário';
-        cor = '#f59e0b';
-    } else if (perc <= 90) {
-        nivel = 'Competitivo';
-        cor = '#3b82f6';
-    } else {
-        nivel = 'Aprovado';
-        cor = '#1e6f5c';
-    }
-    return {
-        ...item,
-        percentual: Math.round(perc),
-        nivel: nivel,
-        cor: cor
-    };
-});
-
-// Ordenar por percentual (do menor para o maior) para destacar dificuldades
-desempenhoArray.sort((a, b) => a.percentual - b.percentual);
-
-if (desempenhoArray.length === 0) {
-    containerDesempenho.innerHTML = '<p style="color: #94a3b8; font-style: italic;">Nenhum dado de questões registrado ainda.</p>';
-    return;
-}
-
-// Contar quantos em cada nível
-const contagemNiveis = {
-    Iniciante: desempenhoArray.filter(d => d.nivel === 'Iniciante').length,
-    Intermediário: desempenhoArray.filter(d => d.nivel === 'Intermediário').length,
-    Competitivo: desempenhoArray.filter(d => d.nivel === 'Competitivo').length,
-    Aprovado: desempenhoArray.filter(d => d.nivel === 'Aprovado').length
-};
-
-// Montar HTML da tabela
-let html = `
-    <div style="margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
-        <span style="background: #dc2626; color: white; padding: 2px 10px; border-radius: 30px; font-size: 0.7rem;">Iniciante: ${contagemNiveis.Iniciante}</span>
-        <span style="background: #f59e0b; color: white; padding: 2px 10px; border-radius: 30px; font-size: 0.7rem;">Intermediário: ${contagemNiveis.Intermediário}</span>
-        <span style="background: #3b82f6; color: white; padding: 2px 10px; border-radius: 30px; font-size: 0.7rem;">Competitivo: ${contagemNiveis.Competitivo}</span>
-        <span style="background: #1e6f5c; color: white; padding: 2px 10px; border-radius: 30px; font-size: 0.7rem;">Aprovado: ${contagemNiveis.Aprovado}</span>
-    </div>
-    <table style="width:100%; font-size:0.8rem; border-collapse:collapse;">
-        <thead>
-            <tr style="background:#eef2ff;">
-                <th style="padding:6px; text-align:left;">Disciplina (N2)</th>
-                <th style="padding:6px; text-align:left;">Subtópico (N3)</th>
-                <th style="padding:6px; text-align:center;">✅</th>
-                <th style="padding:6px; text-align:center;">❌</th>
-                <th style="padding:6px; text-align:center;">Total</th>
-                <th style="padding:6px; text-align:center;">% Acerto</th>
-                <th style="padding:6px; text-align:center;">Nível</th>
-            </tr>
-        </thead>
-        <tbody>
-`;
-
-desempenhoArray.forEach(item => {
-    html += `
-        <tr>
-            <td style="padding:4px 6px; max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.nivel2}">
-                ${item.nivel2.length > 15 ? item.nivel2.substring(0,13)+'…' : item.nivel2}
-            </td>
-            <td style="padding:4px 6px; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.nivel3}">
-                ${item.nivel3.length > 18 ? item.nivel3.substring(0,16)+'…' : item.nivel3}
-            </td>
-            <td style="padding:4px 6px; text-align:center;">${item.certas}</td>
-            <td style="padding:4px 6px; text-align:center;">${item.erradas}</td>
-            <td style="padding:4px 6px; text-align:center;">${item.total}</td>
-            <td style="padding:4px 6px; text-align:center; font-weight:bold;">${item.percentual}%</td>
-            <td style="padding:4px 6px; text-align:center;">
-                <span style="background:${item.cor}; color:white; padding:2px 10px; border-radius:30px; font-size:0.7rem; font-weight:bold;">
-                    ${item.nivel}
-                </span>
-            </td>
-        </tr>
-    `;
-});
-html += '</tbody></table>';
-containerDesempenho.innerHTML = html;
-    // Chamar a nova tabela de desempenho
-    renderizarTabelaDesempenho();
-}
 
 
 // ---------- RENDERIZA TABELA DE DESEMPENHO POR NÍVEIS ----------
@@ -3855,6 +3660,10 @@ function setupHistorico() {
     if (!header || !btn || !container) return;
 
     function toggleHistorico() {
+        const container = document.getElementById('historicoContainer');
+        const btn = document.getElementById('btnToggleHistorico');
+        const contador = document.getElementById('contadorHistorico');
+
         if (container.style.display === 'none' || container.style.display === '') {
             container.style.display = 'block';
             btn.textContent = '▲ Recolher';
@@ -3867,6 +3676,10 @@ function setupHistorico() {
             if (contador) contador.textContent = '';
         }
     }
+
+    // ===== NOVA LINHA: Guarda a referência =====
+    toggleHistoricoFn = toggleHistorico;   // <-- ADICIONE ESTA LINHA
+
 
     // Clique no cabeçalho ou no botão
     header.addEventListener('click', toggleHistorico);
@@ -3884,55 +3697,310 @@ function setupHistorico() {
 setupHistorico();
 
 
+
+
     // ---------- 11. INICIALIZAR ----------
     ativarObservador();
     configurarBotoes();
 }
-    
-// Função para expandir/recolher o histórico de lançamentos manuais
-function toggleHistorico() {
-    const container = document.getElementById('historicoContainer');
-    const btn = document.getElementById('btnToggleHistorico');
-    const contador = document.getElementById('contadorHistorico');
-    const logs = JSON.parse(localStorage.getItem('sedes_manual_logs') || '[]');
-    
-    if (container.style.display === 'none' || container.style.display === '') {
-        container.style.display = 'block';
-        btn.textContent = '▲ Recolher';
-        // Atualiza o contador ao expandir
-        if (contador) {
-            contador.textContent = `(${logs.length} registros)`;
+
+function atualizarGraficos() {
+     console.log('atualizarGraficos iniciada');
+   
+const logs = carregarLogs();
+    if (logs.length === 0) {
+        if (graficoHorasPaginas) { graficoHorasPaginas.destroy(); graficoHorasPaginas = null; }
+        if (graficoAcertosErros) { graficoAcertosErros.destroy(); graficoAcertosErros = null; }
+        if (graficoNivel1) { graficoNivel1.destroy(); graficoNivel1 = null; }
+        document.getElementById('tabelaErrosSubtopico').innerHTML = '<p style="color: #94a3b8; font-style: italic;">Nenhum dado ainda.</p>';
+        return;
+    }
+
+    // ---------- FILTROS PARA GRÁFICOS DE QUESTÕES ----------
+    const logsComQuestoes = logs.filter(log => (log.certas + log.erradas) > 0);
+    const logsComErros = logs.filter(log => log.erradas > 0);
+
+    // ---------- Agrupar TODOS os logs para Horas/Páginas e Nível 1 ----------
+    const disciplinasCompletas = {};
+    const niveis1Completos = {};
+
+    logs.forEach(log => {
+        const key = log.nivel2;
+        if (!disciplinasCompletas[key]) {
+            disciplinasCompletas[key] = { horas: 0, paginas: 0 };
         }
+        disciplinasCompletas[key].horas += log.horas + log.minutos / 60;
+        disciplinasCompletas[key].paginas += log.paginas;
+
+        if (!niveis1Completos[log.nivel1]) niveis1Completos[log.nivel1] = 0;
+        niveis1Completos[log.nivel1] += log.horas + log.minutos / 60;
+    });
+
+    // ---------- Agrupar APENAS logs com questões para Acertos/Erros/% ----------
+    const disciplinasQuestoes = {};
+    logsComQuestoes.forEach(log => {
+        const key = log.nivel2;
+        if (!disciplinasQuestoes[key]) {
+            disciplinasQuestoes[key] = { certas: 0, erradas: 0, total: 0 };
+        }
+        disciplinasQuestoes[key].certas += log.certas;
+        disciplinasQuestoes[key].erradas += log.erradas;
+        disciplinasQuestoes[key].total += log.certas + log.erradas;
+    });
+
+    // ---------- Agrupar por SUBTÓPICO (nível 3) para classificação de desempenho ----------
+    const desempenhoSubtopico = {};
+    logsComQuestoes.forEach(log => {
+        const subKey = `${log.nivel1}|${log.nivel2}|${log.nivel3}`;
+        if (!desempenhoSubtopico[subKey]) {
+            desempenhoSubtopico[subKey] = {
+                nivel1: log.nivel1,
+                nivel2: log.nivel2,
+                nivel3: log.nivel3,
+                certas: 0,
+                erradas: 0,
+                total: 0
+            };
+        }
+        desempenhoSubtopico[subKey].certas += log.certas;
+        desempenhoSubtopico[subKey].erradas += log.erradas;
+        desempenhoSubtopico[subKey].total += log.certas + log.erradas;
+    });
+
+    // ---------- Preparar dados para os gráficos ----------
+    const labelsCompletas = Object.keys(disciplinasCompletas);
+    const horasData = labelsCompletas.map(l => disciplinasCompletas[l].horas);
+    const paginasData = labelsCompletas.map(l => disciplinasCompletas[l].paginas);
+
+    const labelsQuestoes = Object.keys(disciplinasQuestoes);
+    const certasData = labelsQuestoes.map(l => disciplinasQuestoes[l].certas);
+    const erradasData = labelsQuestoes.map(l => disciplinasQuestoes[l].erradas);
+    const percData = labelsQuestoes.map(l => {
+        const total = disciplinasQuestoes[l].certas + disciplinasQuestoes[l].erradas;
+        return total > 0 ? Math.round((disciplinasQuestoes[l].certas / total) * 100) : 0;
+    });
+
+    const labelsN1 = Object.keys(niveis1Completos);
+    const dataN1 = Object.values(niveis1Completos);
+
+    // ---------- Destruir gráficos antigos ----------
+        // Destruir gráficos antigos com segurança
+        if (graficoHorasPaginas && typeof graficoHorasPaginas.destroy === 'function') {
+            graficoHorasPaginas.destroy();
+        }
+        graficoHorasPaginas = null;
+
+        if (graficoAcertosErros && typeof graficoAcertosErros.destroy === 'function') {
+            graficoAcertosErros.destroy();
+        }
+        graficoAcertosErros = null;
+
+        if (graficoNivel1 && typeof graficoNivel1.destroy === 'function') {
+            graficoNivel1.destroy();
+        }
+        graficoNivel1 = null;
+
+// ---------- Gráfico 1: Horas e Páginas ----------
+// ---------- Gráfico 1: Horas e Páginas ----------
+const labelsTruncadas = labelsCompletas.map(label => abreviarRotulo(label, 30));
+
+const ctx1 = document.getElementById('graficoHorasPaginas').getContext('2d');
+graficoHorasPaginas = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+        labels: labelsTruncadas,
+        datasets: [
+            { label: 'Horas', data: horasData, backgroundColor: 'rgba(30,111,92,0.8)', borderColor: '#1e6f5c', borderWidth: 1, yAxisID: 'y' },
+            { label: 'Páginas', data: paginasData, backgroundColor: 'rgba(59,130,246,0.8)', borderColor: '#3b82f6', borderWidth: 1, yAxisID: 'y1' }
+        ]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } },
+        scales: {
+            y: { beginAtZero: true, position: 'left', title: { display: true, text: 'Horas' } },
+            y1: { beginAtZero: true, position: 'right', title: { display: true, text: 'Páginas' }, grid: { drawOnChartArea: false } }
+        }
+    }
+});
+
+// ---------- Gráfico 2: Acertos, Erros e % ----------
+// ---------- Gráfico 2: Acertos, Erros e % ----------
+const labelsTruncadas2 = labelsQuestoes.map(label => abreviarRotulo(label, 30));
+
+const ctx2 = document.getElementById('graficoAcertosErros').getContext('2d');
+graficoAcertosErros = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+        labels: labelsTruncadas2,
+        datasets: [
+            { label: 'Acertos', data: certasData, backgroundColor: 'rgba(30,111,92,0.7)', borderColor: '#1e6f5c', borderWidth: 1, yAxisID: 'y' },
+            { label: 'Erros', data: erradasData, backgroundColor: 'rgba(220,38,38,0.7)', borderColor: '#dc2626', borderWidth: 1, yAxisID: 'y' },
+            { label: '% Acertos', type: 'line', data: percData, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.2)', borderWidth: 3, pointBackgroundColor: '#f59e0b', pointBorderColor: '#f59e0b', pointRadius: 5, fill: false, tension: 0.3, yAxisID: 'y1' }
+        ]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } },
+        scales: {
+            y: { beginAtZero: true, position: 'left', title: { display: true, text: 'Quantidade' } },
+            y1: { beginAtZero: true, position: 'right', max: 100, title: { display: true, text: '%' }, grid: { drawOnChartArea: false } }
+        }
+    }
+});
+    // ---------- Gráfico 3: Tempo por Nível 1 ----------
+    const ctx3 = document.getElementById('graficoNivel1').getContext('2d');
+    const coresN1 = ['#1e6f5c', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+    graficoNivel1 = new Chart(ctx3, {
+        type: 'pie',
+        data: { labels: labelsN1, datasets: [{ data: dataN1, backgroundColor: coresN1.slice(0, labelsN1.length) }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } } }
+    });
+
+    // ---------- NOVA SESSÃO: CLASSIFICAÇÃO DE DESEMPENHO POR SUBTÓPICO ----------
+// ---------- NOVA SESSÃO: CLASSIFICAÇÃO DE DESEMPENHO POR SUBTÓPICO ----------
+const containerDesempenho = document.getElementById('tabelaErrosSubtopico');
+
+// Converter para array e calcular percentual e nível
+const desempenhoArray = Object.values(desempenhoSubtopico).map(item => {
+    const perc = item.total > 0 ? (item.certas / item.total) * 100 : 0;
+    let nivel = '';
+    let cor = '';
+    if (perc <= 70) {
+        nivel = 'Iniciante';
+        cor = '#dc2626';
+    } else if (perc <= 80) {
+        nivel = 'Intermediário';
+        cor = '#f59e0b';
+    } else if (perc <= 90) {
+        nivel = 'Competitivo';
+        cor = '#3b82f6';
     } else {
-        container.style.display = 'none';
-        btn.textContent = '▶ Expandir';
-        if (contador) {
-            contador.textContent = '';
-        }
+        nivel = 'Aprovado';
+        cor = '#1e6f5c';
+    }
+    return {
+        ...item,
+        percentual: Math.round(perc),
+        nivel: nivel,
+        cor: cor
+    };
+});
+
+// Ordenar por percentual (do menor para o maior) para destacar dificuldades
+desempenhoArray.sort((a, b) => a.percentual - b.percentual);
+
+if (desempenhoArray.length === 0) {
+    containerDesempenho.innerHTML = '<p style="color: #94a3b8; font-style: italic;">Nenhum dado de questões registrado ainda.</p>';
+    return;
+}
+
+// Contar quantos em cada nível
+const contagemNiveis = {
+    Iniciante: desempenhoArray.filter(d => d.nivel === 'Iniciante').length,
+    Intermediário: desempenhoArray.filter(d => d.nivel === 'Intermediário').length,
+    Competitivo: desempenhoArray.filter(d => d.nivel === 'Competitivo').length,
+    Aprovado: desempenhoArray.filter(d => d.nivel === 'Aprovado').length
+};
+
+// Montar HTML da tabela
+let html = `
+    <div style="margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
+        <span style="background: #dc2626; color: white; padding: 2px 10px; border-radius: 30px; font-size: 0.7rem;">Iniciante: ${contagemNiveis.Iniciante}</span>
+        <span style="background: #f59e0b; color: white; padding: 2px 10px; border-radius: 30px; font-size: 0.7rem;">Intermediário: ${contagemNiveis.Intermediário}</span>
+        <span style="background: #3b82f6; color: white; padding: 2px 10px; border-radius: 30px; font-size: 0.7rem;">Competitivo: ${contagemNiveis.Competitivo}</span>
+        <span style="background: #1e6f5c; color: white; padding: 2px 10px; border-radius: 30px; font-size: 0.7rem;">Aprovado: ${contagemNiveis.Aprovado}</span>
+    </div>
+    <table style="width:100%; font-size:0.8rem; border-collapse:collapse;">
+        <thead>
+            <tr style="background:#eef2ff;">
+                <th style="padding:6px; text-align:left;">Disciplina (N2)</th>
+                <th style="padding:6px; text-align:left;">Subtópico (N3)</th>
+                <th style="padding:6px; text-align:center;">✅</th>
+                <th style="padding:6px; text-align:center;">❌</th>
+                <th style="padding:6px; text-align:center;">Total</th>
+                <th style="padding:6px; text-align:center;">% Acerto</th>
+                <th style="padding:6px; text-align:center;">Nível</th>
+            </tr>
+        </thead>
+        <tbody>
+`;
+
+desempenhoArray.forEach(item => {
+    html += `
+        <tr>
+            <td style="padding:4px 6px; max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.nivel2}">
+                ${item.nivel2.length > 15 ? item.nivel2.substring(0,13)+'…' : item.nivel2}
+            </td>
+            <td style="padding:4px 6px; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.nivel3}">
+                ${item.nivel3.length > 18 ? item.nivel3.substring(0,16)+'…' : item.nivel3}
+            </td>
+            <td style="padding:4px 6px; text-align:center;">${item.certas}</td>
+            <td style="padding:4px 6px; text-align:center;">${item.erradas}</td>
+            <td style="padding:4px 6px; text-align:center;">${item.total}</td>
+            <td style="padding:4px 6px; text-align:center; font-weight:bold;">${item.percentual}%</td>
+            <td style="padding:4px 6px; text-align:center;">
+                <span style="background:${item.cor}; color:white; padding:2px 10px; border-radius:30px; font-size:0.7rem; font-weight:bold;">
+                    ${item.nivel}
+                </span>
+            </td>
+        </tr>
+    `;
+});
+html += '</tbody></table>';
+containerDesempenho.innerHTML = html;
+
+}
+
+
+// 1. Carregar logs (lê do cache local)
+function carregarLogs() {
+    const local = localStorage.getItem('sedes_manual_logs_fallback');
+    return local ? JSON.parse(local) : [];
+}
+
+// 2. Salvar logs (salva local e envia para o Firebase do usuário)
+function salvarLogs(logs) {
+    // Salva no cache local (instantâneo)
+    localStorage.setItem('sedes_manual_logs_fallback', JSON.stringify(logs));
+    
+    // Salva no Firebase, mas APENAS se o usuário estiver logado
+    if (currentUser) {
+        const ref = database.ref('users/' + currentUser.uid + '/logs');
+        ref.set(logs).catch(err => console.error("Erro ao salvar no Firebase:", err));
     }
 }
 
-// ============================================================
-// FUNÇÃO PARA CALCULAR MÉTRICAS DE TEMPO POR PÁGINA
-// ============================================================
+function atualizarUltimoPontoParada() {
+    const logs = carregarLogs();
+    const ultimo = logs.length > 0 ? logs[logs.length - 1] : null;
+    const span = document.getElementById('ultimoOndeParei');
+    if (span) {
+        if (ultimo && ultimo.ondeParei && ultimo.ondeParei.trim() !== '') {
+            // Exibe: Nível 2 > Nível 3
+            const nivel2 = ultimo.nivel2 || 'Nível 2 não definido';
+            const nivel3 = ultimo.nivel3 || 'Nível 3 não definido';
+            const dataFormatada = ultimo.data || '';
+            span.textContent = `${ultimo.ondeParei} (${nivel2} › ${nivel3} - ${dataFormatada})`;
+        } else {
+            span.textContent = 'Nenhum registro ainda';
+        }
+        span.style.display = 'inline';
+    }
+}
 
 
 function atualizarMetricasTempoPorPagina() {
-    // Lê os logs do localStorage
     const logs = JSON.parse(localStorage.getItem('sedes_manual_logs_fallback') || '[]');
-
-    // Filtra apenas registros com páginas > 0 e tempo > 0
     const registrosValidos = logs.filter(log => 
         (log.paginas || 0) > 0 && ((log.horas || 0) + (log.minutos || 0)) > 0
     );
 
-    // Se não houver registros, exibe "---"
     if (registrosValidos.length === 0) {
         document.getElementById('mediaGeralMinutosPagina').textContent = '---';
         document.getElementById('totalPaginasGeral').textContent = '0';
         document.getElementById('tempoTotalGeral').textContent = '0 min';
-        document.getElementById('corpoMetriasPorDisciplina').innerHTML = '<tr><td colspan="4" style="text-align:center;">Nenhum dado disponível.</td></tr>';
-        // Se o gráfico existir, destrói
+        document.getElementById('corpoMetriasPorDisciplina').innerHTML = '<tr><td colspan="5" style="text-align:center;">Nenhum dado disponível.</td></tr>';
         if (window.graficoMinutosPagina) {
             window.graficoMinutosPagina.destroy();
             window.graficoMinutosPagina = null;
@@ -3940,7 +4008,6 @@ function atualizarMetricasTempoPorPagina() {
         return;
     }
 
-    // Calcula totais gerais
     let totalPaginas = 0;
     let totalMinutos = 0;
     registrosValidos.forEach(log => {
@@ -3950,64 +4017,100 @@ function atualizarMetricasTempoPorPagina() {
     });
     const mediaGeral = totalMinutos / totalPaginas;
 
-    // Exibe totais gerais com formatação
     document.getElementById('mediaGeralMinutosPagina').textContent = mediaGeral.toFixed(2);
     document.getElementById('totalPaginasGeral').textContent = totalPaginas;
-
-    // Formata tempo total: Xh Ym (total min)
     const totalMinutosFormatado = totalMinutos >= 60 
         ? `${Math.floor(totalMinutos / 60)}h ${totalMinutos % 60}min (${totalMinutos} min)`
         : `${totalMinutos} min`;
     document.getElementById('tempoTotalGeral').textContent = totalMinutosFormatado;
 
-    // Agrupa por disciplina (Nível 2)
-    const disciplinas = {};
+    // Agrupar por Nível 3 (subtópico)
+    const subtopicos = {};
     registrosValidos.forEach(log => {
-        const nome = log.nivel2 || 'Outros';
-        if (!disciplinas[nome]) {
-            disciplinas[nome] = { paginas: 0, minutos: 0 };
+        const chave = log.nivel3 || 'Outros';
+        if (!subtopicos[chave]) {
+            subtopicos[chave] = {
+                nivel2: log.nivel2 || 'Outros',
+                nivel3: log.nivel3 || 'Outros',
+                paginas: 0,
+                minutos: 0
+            };
         }
         const minutos = (log.horas || 0) * 60 + (log.minutos || 0);
-        disciplinas[nome].paginas += log.paginas;
-        disciplinas[nome].minutos += minutos;
+        subtopicos[chave].paginas += log.paginas;
+        subtopicos[chave].minutos += minutos;
     });
 
-    // Monta a tabela de detalhamento
+    // ===== ORDENAÇÃO ALFABÉTICA PELO NÍVEL 2 =====
+    const subtopicosArray = Object.values(subtopicos);
+    subtopicosArray.sort((a, b) => {
+        const nivel2A = a.nivel2.toLowerCase();
+        const nivel2B = b.nivel2.toLowerCase();
+        if (nivel2A < nivel2B) return -1;
+        if (nivel2A > nivel2B) return 1;
+        const nivel3A = a.nivel3.toLowerCase();
+        const nivel3B = b.nivel3.toLowerCase();
+        if (nivel3A < nivel3B) return -1;
+        if (nivel3A > nivel3B) return 1;
+        return 0;
+    });
+
+    // Montar tabela
     const corpo = document.getElementById('corpoMetriasPorDisciplina');
     let html = '';
-    let labels = [];
-    let dados = [];
-    for (const [nome, dadosDisciplina] of Object.entries(disciplinas)) {
-        const media = dadosDisciplina.minutos / dadosDisciplina.paginas;
-        const tempoExibicao = dadosDisciplina.minutos >= 60 
-            ? `${Math.floor(dadosDisciplina.minutos / 60)}h ${dadosDisciplina.minutos % 60}min (${dadosDisciplina.minutos} min)`
-            : `${dadosDisciplina.minutos} min`;
+    const labels = [];
+    const dados = [];
+
+    for (const dadosSub of subtopicosArray) {
+        const media = dadosSub.minutos / dadosSub.paginas;
+        const tempoExibicao = dadosSub.minutos >= 60 
+            ? `${Math.floor(dadosSub.minutos / 60)}h ${dadosSub.minutos % 60}min (${dadosSub.minutos} min)`
+            : `${dadosSub.minutos} min`;
         html += `<tr>
-                    <td>${nome}</td>
-                    <td>${dadosDisciplina.paginas}</td>
+                    <td>${dadosSub.nivel2}</td>
+                    <td>${dadosSub.nivel3}</td>
+                    <td>${dadosSub.paginas}</td>
                     <td>${tempoExibicao}</td>
                     <td><strong>${media.toFixed(2)}</strong></td>
                 </tr>`;
-        labels.push(nome);
+        // Para o gráfico, usamos o Nível 2 (disciplina)
+        labels.push(abreviarRotulo(dadosSub.nivel2, 30));
         dados.push(media);
     }
     corpo.innerHTML = html;
 
-    // Atualiza o gráfico (Minutos por página)
+    // ===== GRÁFICO (agrupado por Nível 2) =====
+    const disciplinasGrafico = {};
+    registrosValidos.forEach(log => {
+        const nome = log.nivel2 || 'Outros';
+        if (!disciplinasGrafico[nome]) {
+            disciplinasGrafico[nome] = { minutos: 0, paginas: 0 };
+        }
+        const minutos = (log.horas || 0) * 60 + (log.minutos || 0);
+        disciplinasGrafico[nome].minutos += minutos;
+        disciplinasGrafico[nome].paginas += log.paginas;
+    });
+
+    const labelsGrafico = [];
+    const dadosGrafico = [];
+    for (const [nome, dadosDisc] of Object.entries(disciplinasGrafico)) {
+        const media = dadosDisc.minutos / dadosDisc.paginas;
+        labelsGrafico.push(abreviarRotulo(nome, 30));
+        dadosGrafico.push(media);
+    }
+
     const ctx = document.getElementById('graficoMinutosPorPagina');
     if (ctx) {
-        // Se já existe um gráfico, destrói
         if (window.graficoMinutosPagina) {
             window.graficoMinutosPagina.destroy();
         }
-        // Cria novo gráfico com dados numéricos e formatação do eixo Y
         window.graficoMinutosPagina = new Chart(ctx.getContext('2d'), {
             type: 'bar',
             data: {
-                labels: labels,
+                labels: labelsGrafico,
                 datasets: [{
                     label: 'Minutos por página',
-                    data: dados, // garanta que são números
+                    data: dadosGrafico,
                     backgroundColor: 'rgba(30, 111, 92, 0.7)',
                     borderColor: '#1e6f5c',
                     borderWidth: 1
@@ -4032,7 +4135,7 @@ function atualizarMetricasTempoPorPagina() {
                         title: { display: true, text: 'Minutos / página' },
                         ticks: {
                             callback: function(value) {
-                                return value.toFixed(2); // exibe duas casas decimais
+                                return value.toFixed(2);
                             }
                         }
                     }
@@ -4041,6 +4144,40 @@ function atualizarMetricasTempoPorPagina() {
         });
     }
 }
+
+// Força a atualização dos relatórios após carregar a página
+setTimeout(() => {
+    if (typeof atualizarUltimoPontoParada === 'function') {
+        atualizarUltimoPontoParada();
+    } else {
+        console.warn('atualizarUltimoPontoParada não definida');
+    }
+    if (typeof atualizarGraficos === 'function') {
+        atualizarGraficos();
+    } else {
+        console.warn('atualizarGraficos não definida');
+    }
+    // Também atualiza as métricas de tempo por página
+    if (typeof atualizarMetricasTempoPorPagina === 'function') {
+        atualizarMetricasTempoPorPagina();
+    }
+}, 500);
+
+// No final do DOMContentLoaded, após todas as inicializações
+setTimeout(() => {
+    if (typeof atualizarUltimoPontoParada === 'function') atualizarUltimoPontoParada();
+    if (typeof atualizarGraficos === 'function') atualizarGraficos();
+    if (typeof atualizarMetricasTempoPorPagina === 'function') atualizarMetricasTempoPorPagina();
+}, 1000); // Aumente para 1000ms
+
+document.querySelector('[data-tab="relatorios"]').addEventListener('click', function() {
+    console.log('Aba Relatórios clicada');
+    setTimeout(() => {
+        atualizarUltimoPontoParada();
+        atualizarGraficos();
+        atualizarMetricasTempoPorPagina();
+    }, 300);
+});
 
 // --------------------------------------------------------
     // 5. EXECUÇÃO DOS MÓDULOS (ordem não importa, mas chamamos todos)
@@ -4054,6 +4191,9 @@ initSimuladoReal();        // nova
 
 });
 
+window.atualizarUltimoPontoParada = atualizarUltimoPontoParada;
+window.atualizarGraficos = atualizarGraficos;
+window.atualizarMetricasTempoPorPagina = atualizarMetricasTempoPorPagina;
 
 </script>
 </body>
