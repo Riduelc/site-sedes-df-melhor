@@ -4028,10 +4028,7 @@ containerDesempenho.innerHTML = html;
 }
 
 // ==================== CALENDÁRIO GAMIFICADO ====================
-
-// ==================== CALENDÁRIO GAMIFICADO (COM PONTOS, MEDALHAS E GRÁFICO) ====================
-// ==================== CALENDÁRIO GAMIFICADO COMPLETO ====================
-// ==================== CALENDÁRIO GAMIFICAÇÃO TOTAL ====================
+// ==================== CALENDÁRIO GAMIFICAÇÃO TOTAL (COM RÓTULOS 2h 30min) ====================
 let graficoMensal = null;
 let ultimasMedalhas = [];
 
@@ -4055,7 +4052,6 @@ function initCalendario() {
     let ano = new Date().getFullYear();
     let mes = new Date().getMonth();
 
-    // --- FUNÇÕES AUXILIARES ---
     function carregarLogs() {
         const local = localStorage.getItem('sedes_manual_logs_fallback');
         return local ? JSON.parse(local) : [];
@@ -4122,7 +4118,6 @@ function initCalendario() {
         return { atual: streakAtual, maior: maiorStreak };
     }
 
-    // --- CONFETES E NOTIFICAÇÕES ---
     function lancarConfete() {
         const cores = ['#ff0','#f0f','#0ff','#f00','#0f0','#00f','#fa0','#ff6b6b','#48dbfb','#ff9ff3'];
         for (let i = 0; i < 70; i++) {
@@ -4146,14 +4141,13 @@ function initCalendario() {
         }
     }
 
-    // --- CÁLCULO DE PONTOS, NÍVEL, MEDALHAS ---
     function calcularPontos(totalDias, maiorStreak, diasSemana, semanaBonus) {
         let base = totalDias * 10;
         let bonus = 0;
         if (maiorStreak >= 7) bonus += 50;
         if (maiorStreak >= 14) bonus += 100;
         if (maiorStreak >= 30) bonus += 200;
-        if (diasSemana >= 5 && semanaBonus) bonus += 50; // bônus semanal
+        if (diasSemana >= 5 && semanaBonus) bonus += 50;
         return base + bonus;
     }
 
@@ -4169,11 +4163,9 @@ function initCalendario() {
         if (pontos >= 1000) novas.push({ nome: 'Nível 3! ⚡', emoji: '⚡', cor: '#8b5cf6' });
         if (pontos >= 2000) novas.push({ nome: 'Nível 4! 🚀', emoji: '🚀', cor: '#1e6f5c' });
 
-        // Verifica se alguma medalha é nova
         const ids = novas.map(n => n.nome);
         const idsAntigas = ultimasMedalhas;
         const novasMedalhas = ids.filter(id => !idsAntigas.includes(id));
-
         if (novasMedalhas.length > 0) {
             novasMedalhas.forEach(med => {
                 const item = novas.find(n => n.nome === med);
@@ -4198,7 +4190,6 @@ function initCalendario() {
         containerMedalhas.innerHTML = html;
     }
 
-    // --- EXPORTAR RELATÓRIO ---
     document.getElementById('btnExportarRelatorioGamificado')?.addEventListener('click', function() {
         const logs = carregarLogs();
         const dias = getDiasEstudados();
@@ -4230,7 +4221,6 @@ function initCalendario() {
         URL.revokeObjectURL(url);
     });
 
-    // --- RENDERIZAR CALENDÁRIO E ESTATÍSTICAS ---
     function renderizarCalendario() {
         const diasEstudados = getDiasEstudados();
         const primeiroDia = new Date(ano, mes, 1);
@@ -4263,7 +4253,6 @@ function initCalendario() {
         for (let i = 0; i < restante; i++) html += `<div style="padding:6px; text-align:center; background:#f1f5f9; border-radius:8px; color:#94a3b8;"></div>`;
         grade.innerHTML = html;
 
-        // --- STATS ---
         const streaks = calcularStreaks(diasEstudados);
         streakAtualSpan.textContent = streaks.atual;
         maiorStreakSpan.textContent = streaks.maior;
@@ -4276,7 +4265,6 @@ function initCalendario() {
         diasEstudadosMesSpan.textContent = diasMes;
         porcentagemMesSpan.textContent = Math.round((diasMes / diasNoMes) * 100) + '%';
 
-        // Meta Semanal
         const diasSemana = contarDiasSemana(diasEstudados);
         diasSemanaSpan.textContent = diasSemana;
         const weekId = getWeekId(new Date());
@@ -4297,13 +4285,8 @@ function initCalendario() {
             badgeSemana.style.background = '#94a3b8';
         }
 
-        // Pontos, Nível e Medalhas
         const totalDiasGlobal = diasEstudados.size;
         let pontos = calcularPontos(totalDiasGlobal, streaks.maior, diasSemana, semanaBonus);
-        // Verifica se o bônus semanal já foi aplicado, senão, não dá o bônus de novo
-        if (diasSemana >= 5 && semanaBonus) {
-            // Recalcula sem o bônus fixo para não duplicar, mas já foi adicionado via localStorage
-        }
         pontosTotaisSpan.textContent = pontos;
 
         const nivel = Math.floor(pontos / 500) + 1;
@@ -4314,38 +4297,103 @@ function initCalendario() {
 
         renderizarMedalhas(totalDiasGlobal, streaks.maior, pontos);
 
-        // --- GRÁFICO ---
+        // --- GRÁFICO DE HORAS POR DIA (com formato 2h 30min) ---
         const canvas = document.getElementById('graficoProgressoMensal');
         if (canvas) {
             const ctx = canvas.getContext('2d');
             if (graficoMensal) { graficoMensal.destroy(); graficoMensal = null; }
-            const labels = [], data = [], cores = [];
+
+            function formatarHoras(horas) {
+                if (!horas || horas === 0) return '0min';
+                const h = Math.floor(horas);
+                const min = Math.round((horas - h) * 60);
+                if (h === 0) return min + 'min';
+                if (min === 0) return h + 'h';
+                return h + 'h ' + min + 'min';
+            }
+
+            const logs = carregarLogs();
+            const horasPorDia = {};
+            logs.forEach(log => {
+                if (log.data) {
+                    const dataStr = log.data.split('T')[0];
+                    const horas = (log.horas || 0) + (log.minutos || 0) / 60;
+                    if (horasPorDia[dataStr]) horasPorDia[dataStr] += horas;
+                    else horasPorDia[dataStr] = horas;
+                }
+            });
+
+            const labels = [];
+            const dataHoras = [];
+            const cores = [];
+            let maxHoras = 0;
+
             for (let d = 1; d <= diasNoMes; d++) {
                 const dataObj = new Date(ano, mes, d);
-                const ds = dataObj.toISOString().split('T')[0];
+                const dataStr = dataObj.toISOString().split('T')[0];
                 labels.push(d);
+                const horas = horasPorDia[dataStr] || 0;
+                dataHoras.push(horas);
+                if (horas > maxHoras) maxHoras = horas;
                 const isFuture = dataObj > hoje;
-                if (isFuture) { data.push(0); cores.push('#e5e7eb'); }
-                else if (diasEstudados.has(ds)) { data.push(1); cores.push('#1e6f5c'); }
-                else { data.push(0); cores.push('#dc2626'); }
+                if (isFuture) {
+                    cores.push('#e5e7eb');
+                } else {
+                    cores.push(horas > 0 ? '#1e6f5c' : '#dc2626');
+                }
             }
+
             graficoMensal = new Chart(ctx, {
                 type: 'bar',
-                data: { labels, datasets: [{ label: 'Estudou?', data, backgroundColor: cores, borderColor: cores, borderWidth: 1 }] },
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Horas estudadas',
+                        data: dataHoras,
+                        backgroundColor: cores,
+                        borderColor: cores,
+                        borderWidth: 1
+                    }]
+                },
                 options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ctx.raw === 1 ? '✅ Estudou' : '❌ Não estudou' } } },
-                    scales: { y: { beginAtZero: true, max: 1.2, ticks: { stepSize: 1, callback: v => v === 1 ? '✅' : '❌' }, grid: { display: false } }, x: { grid: { display: false }, ticks: { maxTicksLimit: 31, font: { size: 8 } } } }
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const horas = context.raw;
+                                    if (horas === 0) return 'Nenhuma hora registrada';
+                                    return formatarHoras(horas) + ' de estudos';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: Math.max(1, maxHoras * 1.2),
+                            title: { display: true, text: 'Horas' },
+                            ticks: {
+                                callback: function(value) {
+                                    return formatarHoras(value);
+                                }
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { maxTicksLimit: 31, font: { size: 8 } }
+                        }
+                    }
                 }
             });
         }
     }
 
-    // --- NAVEGAÇÃO ---
     btnAnterior.addEventListener('click', () => { mes--; if (mes < 0) { mes = 11; ano--; } renderizarCalendario(); });
     btnProximo.addEventListener('click', () => { mes++; if (mes > 11) { mes = 0; ano++; } renderizarCalendario(); });
 
-    // --- OBSERVADOR PARA ATUALIZAR AO TROCAR DE ABA ---
     renderizarCalendario();
     const abaCalendario = document.getElementById('calendario');
     if (abaCalendario) {
@@ -4354,7 +4402,6 @@ function initCalendario() {
     }
 }
 
-// Inicializa
 initCalendario();
 
 // 1. Carregar logs (lê do cache local)
