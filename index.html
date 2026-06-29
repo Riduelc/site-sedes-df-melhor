@@ -423,16 +423,15 @@ button, .tab-btn, .timer-btn, .page-btn, .btn-resposta, .save-redacao {
         <button class="tab-btn" data-tab="cronograma">⏰ Cronograma 5h/dia</button>
         <button class="tab-btn" data-tab="discursiva">✍️ Discursiva (critérios edital)</button>
         <button class="tab-btn" data-tab="legislacao">⚖️ Legislação completa</button>
-         <button class="tab-btn" data-tab="simuladoReal">🎯 Simulado Real (60q)</button>
+        <button class="tab-btn" data-tab="simuladoReal">🎯 Simulado Real (60q)</button>
         <button class="tab-btn" data-tab="relatorios">📊 Relatórios</button>
         <button class="tab-btn" data-tab="dicas">🚀 Dicas Antiprocrastinação</button>
+        <button class="tab-btn" data-tab="calendario">📅 Calendário</button>
        
     </div>
 <div class="container">
 
-
-<!-- ==================== ABA: VISLUMBRANDO O EDITAL (COM CHECKBOXES E PERSISTÊNCIA) ==================== -->
-<!-- ==================== ABA: VISLUMBRANDO O EDITAL (CHECKBOXES HIERARQUIZADOS: TEORIA + QUESTÕES) ==================== -->
+    <!-- ==================== ABA: VISLUMBRANDO O EDITAL (CHECKBOXES HIERARQUIZADOS: TEORIA + QUESTÕES) ==================== -->
 <div id="edital" class="tab-content">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 16px;">
         <h2 style="margin: 0;">📋 Edital SEDES/DF – Conteúdo Programático Completo</h2>
@@ -967,8 +966,6 @@ button, .tab-btn, .timer-btn, .page-btn, .btn-resposta, .save-redacao {
     </div>
 </div>
 
-
-
 <!-- ==================== ABA 3 LEI SECA TOP FUCKING ARTIGOS ==================== -->
 <div id="leiseca" class="tab-content">
     <h2>🔥 LEI SECA TOP FUCKING ARTIGOS 🔥</h2>
@@ -1413,6 +1410,81 @@ button, .tab-btn, .timer-btn, .page-btn, .btn-resposta, .save-redacao {
         </div>
     </div>
     <footer>⚡ Método Pareto + banca Quadrix – 80% da prova com 20% do conteúdo. Navegue pelas abas e simule as provas.</footer>
+
+<!-- ==================== ABA CALENDÁRIO (GAMIFICAÇÃO COMPLETA) ==================== -->
+<div id="calendario" class="tab-content">
+    <h2>📅 Calendário de Estudos – Gamificação Total</h2>
+    <p style="margin-bottom: 12px;">Cada dia é pintado com base nos seus lançamentos manuais (aba Relatórios).</p>
+
+    <!-- PAINEL PRINCIPAL -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; background: #f8fafc; border-radius: 24px; padding: 16px; margin-bottom: 20px;">
+        <div style="text-align:center;"><div style="font-size:1.8rem; font-weight:bold; color:#1e6f5c;" id="streakAtual">0</div><div style="font-size:0.8rem; color:#4b5563;">🔥 Streak</div></div>
+        <div style="text-align:center;"><div style="font-size:1.8rem; font-weight:bold; color:#f59e0b;" id="maiorStreak">0</div><div style="font-size:0.8rem; color:#4b5563;">🏆 Maior streak</div></div>
+        <div style="text-align:center;"><div style="font-size:1.8rem; font-weight:bold; color:#3b82f6;" id="diasEstudadosMes">0</div><div style="font-size:0.8rem; color:#4b5563;">📘 Dias no mês</div></div>
+        <div style="text-align:center;"><div style="font-size:1.8rem; font-weight:bold; color:#8b5cf6;" id="porcentagemMes">0%</div><div style="font-size:0.8rem; color:#4b5563;">📊 % do mês</div></div>
+        <div style="text-align:center; background: #eef2ff; border-radius: 16px; padding: 4px;">
+            <div style="font-size:1.8rem; font-weight:bold; color:#dc2626;" id="pontosTotais">0</div>
+            <div style="font-size:0.8rem; color:#4b5563;">⭐ Pontos</div>
+        </div>
+        <!-- NÍVEL E BARRA DE PROGRESSO -->
+        <div style="text-align:center; background: #fefce8; border-radius: 16px; padding: 4px; grid-column: span 2;">
+            <div style="font-size:1.2rem; font-weight:bold; color:#b45309;" id="nivelAtual">Nível 1</div>
+            <div style="width:100%; background:#e5e7eb; border-radius:20px; height:8px; margin:4px 0;">
+                <div id="barraProgressoNivel" style="width:0%; background:#f59e0b; border-radius:20px; height:8px;"></div>
+            </div>
+            <div style="font-size:0.7rem; color:#6b7280;" id="textoProgressoNivel">0 / 500 pts</div>
+        </div>
+    </div>
+
+    <!-- MEDALHAS -->
+    <div id="containerMedalhas" style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 20px; min-height: 40px;"></div>
+
+    <!-- META SEMANAL -->
+    <div style="display: flex; justify-content: space-between; align-items: center; background: #e6f7f0; border-radius: 16px; padding: 8px 16px; margin-bottom: 12px;">
+        <span><strong>📅 Meta da Semana:</strong> <span id="diasSemana">0</span>/5 dias estudados</span>
+        <span id="badgeSemana" style="background: #94a3b8; color: white; padding: 2px 12px; border-radius: 30px; font-size: 0.8rem;">⏳ Em andamento</span>
+    </div>
+
+    <!-- NAVEGAÇÃO DO CALENDÁRIO -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <button id="btnMesAnterior" style="background: #e2e8f0; border: none; padding: 6px 16px; border-radius: 30px; cursor: pointer; font-weight: bold;">◀</button>
+        <h3 id="tituloMes" style="margin:0; font-size:1.4rem;">Janeiro 2026</h3>
+        <button id="btnMesProximo" style="background: #e2e8f0; border: none; padding: 6px 16px; border-radius: 30px; cursor: pointer; font-weight: bold;">▶</button>
+    </div>
+
+    <!-- GRADE DO CALENDÁRIO -->
+    <div id="gradeCalendario" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; background: #f1f5f9; border-radius: 16px; padding: 8px;">
+        <div style="font-weight:bold; text-align:center; padding:6px 0; color:#4b5563;">Dom</div>
+        <div style="font-weight:bold; text-align:center; padding:6px 0; color:#4b5563;">Seg</div>
+        <div style="font-weight:bold; text-align:center; padding:6px 0; color:#4b5563;">Ter</div>
+        <div style="font-weight:bold; text-align:center; padding:6px 0; color:#4b5563;">Qua</div>
+        <div style="font-weight:bold; text-align:center; padding:6px 0; color:#4b5563;">Qui</div>
+        <div style="font-weight:bold; text-align:center; padding:6px 0; color:#4b5563;">Sex</div>
+        <div style="font-weight:bold; text-align:center; padding:6px 0; color:#4b5563;">Sáb</div>
+    </div>
+
+    <!-- GRÁFICO DE PROGRESSO MENSAL -->
+    <div style="margin-top: 24px; background: #f8fafc; border-radius: 20px; padding: 16px;">
+        <h4 style="margin: 0 0 12px 0;">📈 Progresso diário do mês</h4>
+        <div style="height: 180px; width: 100%;">
+            <canvas id="graficoProgressoMensal"></canvas>
+        </div>
+    </div>
+
+    <!-- LEGENDA + EXPORT -->
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 16px; justify-content: center; align-items: center;">
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <span><span style="display:inline-block; width:16px; height:16px; background:#1e6f5c; border-radius:4px;"></span> Estudou</span>
+            <span><span style="display:inline-block; width:16px; height:16px; background:#dc2626; border-radius:4px;"></span> Não estudou</span>
+            <span><span style="display:inline-block; width:16px; height:16px; background:#3b82f6; border-radius:4px;"></span> Hoje</span>
+            <span><span style="display:inline-block; width:16px; height:16px; background:#e5e7eb; border-radius:4px;"></span> Futuro</span>
+        </div>
+        <button id="btnExportarRelatorioGamificado" style="background: #1e6f5c; color: white; border: none; padding: 6px 18px; border-radius: 40px; cursor: pointer; font-weight: bold; font-size:0.9rem;">📥 Baixar Relatório</button>
+    </div>
+
+    <p style="margin-top: 12px; font-size:0.85rem; color:#6b7280; text-align:center;">
+        💡 Dados baseados nos registros da aba <strong>Relatórios</strong>.
+    </p>
 </div>
 
 <!-- ==================== ABA SIMULADO REAL (60 questões) ==================== -->
@@ -1646,8 +1718,6 @@ button, .tab-btn, .timer-btn, .page-btn, .btn-resposta, .save-redacao {
         <p style="margin: 12px 0 0 0; color: #1e2a3e;"><strong>🎯 Não precisa de motivação. Você precisa de disciplina. E disciplina é fazer o que precisa ser feito, mesmo quando não está com vontade. E a vontade só vem depois que você começa.</strong></p>
     </div>
 </div>
-
-<!-- ==================== ABA RELATÓRIOS ==================== -->
 
 <!-- ==================== ABA RELATÓRIOS (COM DIÁRIO DE ESTUDOS) ==================== -->
 <div id="relatorios" class="tab-content">
@@ -1918,6 +1988,11 @@ button, .tab-btn, .timer-btn, .page-btn, .btn-resposta, .save-redacao {
 // CÓDIGO MODULAR – Cada aba tem sua própria função isolada
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
+
+    //adicionado para implementação da aba supergameficação do calendário.
+    if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+}
 
        // Serve para limitar os rótulos dos gráficos, evitando que fiquem muito longos
             function abreviarRotulo(texto, limite = 30) {
@@ -3952,6 +4027,335 @@ containerDesempenho.innerHTML = html;
 
 }
 
+// ==================== CALENDÁRIO GAMIFICADO ====================
+
+// ==================== CALENDÁRIO GAMIFICADO (COM PONTOS, MEDALHAS E GRÁFICO) ====================
+// ==================== CALENDÁRIO GAMIFICADO COMPLETO ====================
+// ==================== CALENDÁRIO GAMIFICAÇÃO TOTAL ====================
+let graficoMensal = null;
+let ultimasMedalhas = [];
+
+function initCalendario() {
+    const grade = document.getElementById('gradeCalendario');
+    const tituloMes = document.getElementById('tituloMes');
+    const btnAnterior = document.getElementById('btnMesAnterior');
+    const btnProximo = document.getElementById('btnMesProximo');
+    const streakAtualSpan = document.getElementById('streakAtual');
+    const maiorStreakSpan = document.getElementById('maiorStreak');
+    const diasEstudadosMesSpan = document.getElementById('diasEstudadosMes');
+    const porcentagemMesSpan = document.getElementById('porcentagemMes');
+    const pontosTotaisSpan = document.getElementById('pontosTotais');
+    const containerMedalhas = document.getElementById('containerMedalhas');
+    const nivelAtualSpan = document.getElementById('nivelAtual');
+    const barraProgresso = document.getElementById('barraProgressoNivel');
+    const textoProgresso = document.getElementById('textoProgressoNivel');
+    const diasSemanaSpan = document.getElementById('diasSemana');
+    const badgeSemana = document.getElementById('badgeSemana');
+
+    let ano = new Date().getFullYear();
+    let mes = new Date().getMonth();
+
+    // --- FUNÇÕES AUXILIARES ---
+    function carregarLogs() {
+        const local = localStorage.getItem('sedes_manual_logs_fallback');
+        return local ? JSON.parse(local) : [];
+    }
+
+    function getDiasEstudados() {
+        const logs = carregarLogs();
+        const dias = new Set();
+        logs.forEach(log => { if (log.data) dias.add(log.data.split('T')[0]); });
+        return dias;
+    }
+
+    function getWeekId(date) {
+        const d = new Date(date);
+        d.setHours(0,0,0,0);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(d.setDate(diff));
+        return monday.toISOString().split('T')[0];
+    }
+
+    function contarDiasSemana(diasEstudados) {
+        const hoje = new Date();
+        const weekId = getWeekId(hoje);
+        let count = 0;
+        for (let d of diasEstudados) {
+            const date = new Date(d + 'T00:00:00');
+            if (getWeekId(date) === weekId) count++;
+        }
+        return count;
+    }
+
+    function calcularStreaks(diasEstudados) {
+        const datas = Array.from(diasEstudados).sort();
+        if (datas.length === 0) return { atual: 0, maior: 0 };
+        const dates = datas.map(d => new Date(d + 'T00:00:00')).sort((a,b)=>a-b);
+        let streakAtual = 0, maiorStreak = 0;
+        const hoje = new Date(); hoje.setHours(0,0,0,0);
+        let dataComparacao = new Date(hoje);
+        const hojeStr = hoje.toISOString().split('T')[0];
+        if (diasEstudados.has(hojeStr)) { streakAtual = 1; dataComparacao.setDate(dataComparacao.getDate() - 1); }
+        else {
+            let ontem = new Date(hoje); ontem.setDate(ontem.getDate() - 1);
+            if (diasEstudados.has(ontem.toISOString().split('T')[0])) { streakAtual = 1; dataComparacao = new Date(ontem); dataComparacao.setDate(dataComparacao.getDate() - 1); }
+            else streakAtual = 0;
+        }
+        if (streakAtual > 0) {
+            while (true) {
+                const dStr = dataComparacao.toISOString().split('T')[0];
+                if (diasEstudados.has(dStr)) { streakAtual++; dataComparacao.setDate(dataComparacao.getDate() - 1); }
+                else break;
+            }
+        }
+        let temp = 0;
+        for (let i = 0; i < dates.length; i++) {
+            if (i === 0) temp = 1;
+            else {
+                const diff = (dates[i] - dates[i-1]) / (1000*60*60*24);
+                if (diff === 1) temp++;
+                else { if (temp > maiorStreak) maiorStreak = temp; temp = 1; }
+            }
+        }
+        if (temp > maiorStreak) maiorStreak = temp;
+        return { atual: streakAtual, maior: maiorStreak };
+    }
+
+    // --- CONFETES E NOTIFICAÇÕES ---
+    function lancarConfete() {
+        const cores = ['#ff0','#f0f','#0ff','#f00','#0f0','#00f','#fa0','#ff6b6b','#48dbfb','#ff9ff3'];
+        for (let i = 0; i < 70; i++) {
+            const el = document.createElement('div');
+            el.style.cssText = `position:fixed; left:${Math.random()*100}%; top:-10px; width:${4+Math.random()*8}px; height:${4+Math.random()*8}px; background:${cores[Math.floor(Math.random()*cores.length)]}; border-radius:${Math.random()>0.5?'50%':'2px'}; pointer-events:none; z-index:9999; transition: all ${1+Math.random()*1.5}s cubic-bezier(0.2, 0.8, 0.2, 1);`;
+            document.body.appendChild(el);
+            setTimeout(() => {
+                el.style.transform = `translate(${(Math.random()-0.5)*400}px, ${window.innerHeight + 100}px) rotate(${Math.random()*720}deg) scale(0.2)`;
+                el.style.opacity = '0';
+            }, 10);
+            setTimeout(() => el.remove(), 3000);
+        }
+    }
+
+    function notificarMedalha(nome, emoji) {
+        if (!("Notification" in window)) return;
+        if (Notification.permission === "granted") {
+            new Notification(`🏅 Nova Medalha: ${nome}`, { body: `Parabéns! Você desbloqueou a medalha ${emoji} ${nome}!`, icon: 'https://cdn.jsdelivr.net/npm/emoji-datasource-apple@14.0.1/img/apple/64/1f3c6.png' });
+        } else if (Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
+    }
+
+    // --- CÁLCULO DE PONTOS, NÍVEL, MEDALHAS ---
+    function calcularPontos(totalDias, maiorStreak, diasSemana, semanaBonus) {
+        let base = totalDias * 10;
+        let bonus = 0;
+        if (maiorStreak >= 7) bonus += 50;
+        if (maiorStreak >= 14) bonus += 100;
+        if (maiorStreak >= 30) bonus += 200;
+        if (diasSemana >= 5 && semanaBonus) bonus += 50; // bônus semanal
+        return base + bonus;
+    }
+
+    function renderizarMedalhas(totalDias, maiorStreak, pontos) {
+        const novas = [];
+        if (totalDias >= 1) novas.push({ nome: 'Primeiro passo!', emoji: '🌱', cor: '#8b5cf6' });
+        if (totalDias >= 10) novas.push({ nome: '10 dias de foco!', emoji: '🥈', cor: '#94a3b8' });
+        if (maiorStreak >= 7) novas.push({ nome: 'Streak 7 dias! 🔥', emoji: '🥉', cor: '#f59e0b' });
+        if (maiorStreak >= 14) novas.push({ nome: 'Streak 14 dias! ⚡', emoji: '🏅', cor: '#3b82f6' });
+        if (maiorStreak >= 30) novas.push({ nome: 'Streak 30 dias! 👑', emoji: '👑', cor: '#dc2626' });
+        if (totalDias >= 30) novas.push({ nome: 'Mês completo! 🎯', emoji: '🎯', cor: '#1e6f5c' });
+        if (pontos >= 500) novas.push({ nome: 'Nível 2! ⬆️', emoji: '⬆️', cor: '#f97316' });
+        if (pontos >= 1000) novas.push({ nome: 'Nível 3! ⚡', emoji: '⚡', cor: '#8b5cf6' });
+        if (pontos >= 2000) novas.push({ nome: 'Nível 4! 🚀', emoji: '🚀', cor: '#1e6f5c' });
+
+        // Verifica se alguma medalha é nova
+        const ids = novas.map(n => n.nome);
+        const idsAntigas = ultimasMedalhas;
+        const novasMedalhas = ids.filter(id => !idsAntigas.includes(id));
+
+        if (novasMedalhas.length > 0) {
+            novasMedalhas.forEach(med => {
+                const item = novas.find(n => n.nome === med);
+                if (item) {
+                    notificarMedalha(item.nome, item.emoji);
+                    lancarConfete();
+                }
+            });
+        }
+        ultimasMedalhas = ids;
+
+        if (novas.length === 0) {
+            containerMedalhas.innerHTML = '<span style="color:#94a3b8; font-style:italic;">Estude para desbloquear medalhas! 🏅</span>';
+            return;
+        }
+        let html = '';
+        novas.forEach(c => {
+            html += `<div style="background: ${c.cor}20; border: 2px solid ${c.cor}; border-radius: 50px; padding: 4px 16px; display: inline-flex; align-items: center; gap: 8px; font-weight: bold; color: #1e293b;">
+                        <span style="font-size:1.4rem;">${c.emoji}</span> ${c.nome}
+                    </div>`;
+        });
+        containerMedalhas.innerHTML = html;
+    }
+
+    // --- EXPORTAR RELATÓRIO ---
+    document.getElementById('btnExportarRelatorioGamificado')?.addEventListener('click', function() {
+        const logs = carregarLogs();
+        const dias = getDiasEstudados();
+        const streaks = calcularStreaks(dias);
+        const totalDias = dias.size;
+        const pontos = parseInt(pontosTotaisSpan.textContent) || 0;
+        const nivel = Math.floor(pontos / 500) + 1;
+        const medalhas = Array.from(document.querySelectorAll('#containerMedalhas div')).map(el => el.textContent.trim()).join(', ');
+
+        let texto = '📚 RELATÓRIO GAMIFICADO - SEDES/DF\n';
+        texto += '='.repeat(40) + '\n';
+        texto += `📅 Data: ${new Date().toLocaleString('pt-BR')}\n`;
+        texto += `🔥 Streak atual: ${streaks.atual} dias\n`;
+        texto += `🏆 Maior streak: ${streaks.maior} dias\n`;
+        texto += `📘 Total de dias estudados (geral): ${totalDias}\n`;
+        texto += `⭐ Pontos totais: ${pontos}\n`;
+        texto += `⬆️ Nível atual: ${nivel}\n`;
+        texto += `🏅 Medalhas: ${medalhas || 'Nenhuma ainda'}\n`;
+        texto += `📊 Total de lançamentos manuais: ${logs.length}\n`;
+        texto += '='.repeat(40) + '\n';
+        texto += '🎯 Continue assim! Cada dia conta! 🚀';
+
+        const blob = new Blob([texto], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `relatorio_gamificado_${new Date().toISOString().slice(0,10)}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    // --- RENDERIZAR CALENDÁRIO E ESTATÍSTICAS ---
+    function renderizarCalendario() {
+        const diasEstudados = getDiasEstudados();
+        const primeiroDia = new Date(ano, mes, 1);
+        const ultimoDia = new Date(ano, mes + 1, 0);
+        const diasNoMes = ultimoDia.getDate();
+        const diaSemanaInicio = primeiroDia.getDay();
+        const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+        const nomesMes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+        tituloMes.textContent = `${nomesMes[mes]} ${ano}`;
+
+        let html = '';
+        for (let i = 0; i < diaSemanaInicio; i++) html += `<div style="padding:6px; text-align:center; background:#f1f5f9; border-radius:8px; color:#94a3b8;"></div>`;
+
+        for (let d = 1; d <= diasNoMes; d++) {
+            const dataObj = new Date(ano, mes, d);
+            const dataStr = dataObj.toISOString().split('T')[0];
+            const isToday = dataObj.getTime() === hoje.getTime();
+            const isFuture = dataObj > hoje;
+            const estudou = diasEstudados.has(dataStr);
+            let cor = '#e5e7eb', textoCor = '#1e293b', destaque = '';
+            if (isFuture) { cor = '#f1f5f9'; textoCor = '#94a3b8'; }
+            else if (estudou) { cor = '#1e6f5c'; textoCor = 'white'; }
+            else { cor = '#dc2626'; textoCor = 'white'; }
+            if (isToday) destaque = 'box-shadow: 0 0 0 3px #3b82f6;';
+            html += `<div style="padding:6px; text-align:center; background:${cor}; border-radius:8px; color:${textoCor}; font-weight:bold; ${destaque}">${d}</div>`;
+        }
+        const totalCells = diaSemanaInicio + diasNoMes;
+        const restante = (7 - (totalCells % 7)) % 7;
+        for (let i = 0; i < restante; i++) html += `<div style="padding:6px; text-align:center; background:#f1f5f9; border-radius:8px; color:#94a3b8;"></div>`;
+        grade.innerHTML = html;
+
+        // --- STATS ---
+        const streaks = calcularStreaks(diasEstudados);
+        streakAtualSpan.textContent = streaks.atual;
+        maiorStreakSpan.textContent = streaks.maior;
+
+        let diasMes = 0;
+        for (let d = 1; d <= diasNoMes; d++) {
+            const ds = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            if (diasEstudados.has(ds)) diasMes++;
+        }
+        diasEstudadosMesSpan.textContent = diasMes;
+        porcentagemMesSpan.textContent = Math.round((diasMes / diasNoMes) * 100) + '%';
+
+        // Meta Semanal
+        const diasSemana = contarDiasSemana(diasEstudados);
+        diasSemanaSpan.textContent = diasSemana;
+        const weekId = getWeekId(new Date());
+        const semanaBonusKey = `sedes_weekly_bonus_${weekId}`;
+        let semanaBonus = localStorage.getItem(semanaBonusKey) === 'true';
+        if (diasSemana >= 5 && !semanaBonus) {
+            badgeSemana.innerHTML = '🎉 Meta batida! +50 pts';
+            badgeSemana.style.background = '#1e6f5c';
+            semanaBonus = true;
+            localStorage.setItem(semanaBonusKey, 'true');
+            lancarConfete();
+            notificarMedalha('Meta Semanal', '🎯');
+        } else if (diasSemana >= 5 && semanaBonus) {
+            badgeSemana.innerHTML = '🏆 Meta batida!';
+            badgeSemana.style.background = '#f59e0b';
+        } else {
+            badgeSemana.innerHTML = '⏳ Em andamento';
+            badgeSemana.style.background = '#94a3b8';
+        }
+
+        // Pontos, Nível e Medalhas
+        const totalDiasGlobal = diasEstudados.size;
+        let pontos = calcularPontos(totalDiasGlobal, streaks.maior, diasSemana, semanaBonus);
+        // Verifica se o bônus semanal já foi aplicado, senão, não dá o bônus de novo
+        if (diasSemana >= 5 && semanaBonus) {
+            // Recalcula sem o bônus fixo para não duplicar, mas já foi adicionado via localStorage
+        }
+        pontosTotaisSpan.textContent = pontos;
+
+        const nivel = Math.floor(pontos / 500) + 1;
+        const progresso = (pontos % 500);
+        nivelAtualSpan.textContent = `Nível ${nivel}`;
+        barraProgresso.style.width = `${(progresso / 500) * 100}%`;
+        textoProgresso.textContent = `${progresso} / 500 pts`;
+
+        renderizarMedalhas(totalDiasGlobal, streaks.maior, pontos);
+
+        // --- GRÁFICO ---
+        const canvas = document.getElementById('graficoProgressoMensal');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            if (graficoMensal) { graficoMensal.destroy(); graficoMensal = null; }
+            const labels = [], data = [], cores = [];
+            for (let d = 1; d <= diasNoMes; d++) {
+                const dataObj = new Date(ano, mes, d);
+                const ds = dataObj.toISOString().split('T')[0];
+                labels.push(d);
+                const isFuture = dataObj > hoje;
+                if (isFuture) { data.push(0); cores.push('#e5e7eb'); }
+                else if (diasEstudados.has(ds)) { data.push(1); cores.push('#1e6f5c'); }
+                else { data.push(0); cores.push('#dc2626'); }
+            }
+            graficoMensal = new Chart(ctx, {
+                type: 'bar',
+                data: { labels, datasets: [{ label: 'Estudou?', data, backgroundColor: cores, borderColor: cores, borderWidth: 1 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ctx.raw === 1 ? '✅ Estudou' : '❌ Não estudou' } } },
+                    scales: { y: { beginAtZero: true, max: 1.2, ticks: { stepSize: 1, callback: v => v === 1 ? '✅' : '❌' }, grid: { display: false } }, x: { grid: { display: false }, ticks: { maxTicksLimit: 31, font: { size: 8 } } } }
+                }
+            });
+        }
+    }
+
+    // --- NAVEGAÇÃO ---
+    btnAnterior.addEventListener('click', () => { mes--; if (mes < 0) { mes = 11; ano--; } renderizarCalendario(); });
+    btnProximo.addEventListener('click', () => { mes++; if (mes > 11) { mes = 0; ano++; } renderizarCalendario(); });
+
+    // --- OBSERVADOR PARA ATUALIZAR AO TROCAR DE ABA ---
+    renderizarCalendario();
+    const abaCalendario = document.getElementById('calendario');
+    if (abaCalendario) {
+        new MutationObserver(() => { if (abaCalendario.classList.contains('active')) renderizarCalendario(); })
+            .observe(abaCalendario, { attributes: true, attributeFilter: ['class'] });
+    }
+}
+
+// Inicializa
+initCalendario();
 
 // 1. Carregar logs (lê do cache local)
 function carregarLogs() {
@@ -4194,6 +4598,8 @@ initSimuladoReal();        // nova
 window.atualizarUltimoPontoParada = atualizarUltimoPontoParada;
 window.atualizarGraficos = atualizarGraficos;
 window.atualizarMetricasTempoPorPagina = atualizarMetricasTempoPorPagina;
+
+
 
 </script>
 </body>
